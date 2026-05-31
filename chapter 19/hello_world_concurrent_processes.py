@@ -2,6 +2,7 @@ import itertools
 import time
 from multiprocessing import Process, Event, synchronize
 
+
 def spin(msg: str, done: synchronize.Event):
     for char in itertools.cycle(r'\|/-'):
         status = f'\r{char} {msg}'
@@ -12,9 +13,11 @@ def spin(msg: str, done: synchronize.Event):
         blanks = ' ' * len(status)
         print(f'\r{blanks}\r', end='')
 
+
 def slow() -> int:
     time.sleep(3)
     return 42
+
 
 def supervisor() -> int:
     done = Event()
@@ -25,9 +28,11 @@ def supervisor() -> int:
     spinner_process.join()
     return result
 
+
 def main() -> None:
     result = supervisor()
     print(f'Answer: {result}')
+
 
 if __name__ == '__main__':
     main()

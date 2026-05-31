@@ -13,9 +13,11 @@ def spin(msg: str, done: Event):
         blanks = ' ' * len(status)
         print(f'\r{blanks}\r', end='')
 
+
 def slow() -> int:
     time.sleep(3)
     return 42
+
 
 def supervisor() -> int:
     done = Event()
@@ -27,9 +29,11 @@ def supervisor() -> int:
     spinner_thread.join()
     return result
 
+
 def main() -> None:
     result = supervisor()
     print(f'Answer: {result}')
+
 
 if __name__ == '__main__':
     main()

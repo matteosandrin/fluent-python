@@ -1,4 +1,4 @@
-import  math
+import math
 
 NUMBERS = [
     2,
@@ -22,6 +22,7 @@ NUMBERS = [
     7777777777777753,
     9999999999999917,
 ]
+
 
 def is_prime(n: int) -> bool:
     if n < 2:

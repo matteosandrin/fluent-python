@@ -3,20 +3,24 @@ from primes import NUMBERS, is_prime
 from time import perf_counter
 from typing import NamedTuple
 
+
 class PrimeResult(NamedTuple):
     n: int
     prime: bool
     elapsed: int
+
 
 def check(n: int) -> PrimeResult:
     start = perf_counter()
     prime = is_prime(n)
     return PrimeResult(n, prime, perf_counter() - start)
 
+
 def check_many(nums: list[int]) -> list[PrimeResult]:
     with futures.ProcessPoolExecutor() as executor:
         res = executor.map(check, nums)
     return list(res)
+
 
 def main():
     t0 = perf_counter()
@@ -27,6 +31,7 @@ def main():
         print(f'{n:16} {label} {elapsed:9.6f}s')
     print()
     print(f'{len(prime_result)} prime checks in {delta:.2f}s')
+
 
 if __name__ == '__main__':
     main()
