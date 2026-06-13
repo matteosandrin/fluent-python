@@ -32,4 +32,4 @@ The key cost is that all the code has to be `async` compatible.
 An applications can use a combination of all three to accomplish different goals:
  * An `asyincio/async/await` loop that handles network I/O and concurrency.
  * Some CPU-heavy tasks offloaded to separate processes on `ProcessPoolExecutor`
- * Any synchronous code that does not support `async/await` is run withing a threa, so that it can run asynchronously (for example, with `asyncio.to_thread()`)
+ * Any synchronous code that does not support `async/await` is run within a thread, so that it can run asynchronously (for example, with `asyncio.to_thread()`)
