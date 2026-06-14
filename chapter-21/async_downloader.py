@@ -4,25 +4,30 @@
 
 # we will use a semaphore to limit concurrency
 
-import cv2
-import numpy as np
-from typing import NamedTuple, Optional
-import httpx
 import asyncio
-from urllib.parse import urlparse
-import os.path
 import concurrent.futures
+import cv2
+import httpx
+import numpy as np
+import os.path
 import sys
+from typing import NamedTuple
+from urllib.parse import urlparse
 
 DOWNLOAD_PATH = "downloaded/"
-MAX_CONCURRENT = 5
+MAX_CONCURRENT = 10
 
 
 class DownloadResult(NamedTuple):
     url: str
     status: int
-    image: Optional[bytes]
+    image: bytes | None
 
+class Context(NamedTuple):
+    client: httpx.AsyncClient
+    semaphore: asyncio.Semaphore
+    loop: asyncio.AbstractEventLoop
+    pool: concurrent.futures.ProcessPoolExecutor
 
 def worker(img: bytes, url: str, target: str):
     ext = url[url.rfind("."):]
@@ -34,7 +39,7 @@ def worker(img: bytes, url: str, target: str):
     save(grayscale_img, url, target)
 
 
-def convert_to_grayscale(img: bytes, extension: str) -> Optional[bytes]:
+def convert_to_grayscale(img: bytes, extension: str) -> bytes | None:
     buffer = np.frombuffer(img, dtype=np.uint8)
     grayscale_array = cv2.imdecode(buffer, cv2.IMREAD_GRAYSCALE)
     if grayscale_array is None or grayscale_array.size == 0:
@@ -54,11 +59,11 @@ def save(img: bytes, url: str, target: str):
         print(f"INFO: Image saved to disk: {filepath}")
 
 
-async def download(client: httpx.AsyncClient, semaphore: asyncio.Semaphore, url: str) -> DownloadResult:
+async def download(url: str, ctx: Context) -> DownloadResult:
     try:
-        async with semaphore:
+        async with ctx.semaphore:
             print(f"INFO: downloading {url}")
-            res = await client.get(url, timeout=10.0)
+            res = await ctx.client.get(url, timeout=10.0)
     except httpx.HTTPError:
         return DownloadResult(url, 0, None)
     if res.status_code == 200:
@@ -67,16 +72,13 @@ async def download(client: httpx.AsyncClient, semaphore: asyncio.Semaphore, url:
 
 
 async def process(
-    client: httpx.AsyncClient,
-    semaphore: asyncio.Semaphore,
-    loop: asyncio.AbstractEventLoop,
-    pool: concurrent.futures.ProcessPoolExecutor,
-    url: str
+    url: str,
+    ctx: Context
 ):
-    res = await download(client, semaphore, url)
+    res = await download(url, ctx)
     if res.status == 200:
         try:
-            await loop.run_in_executor(pool, worker, res.image, res.url, DOWNLOAD_PATH)
+            await ctx.loop.run_in_executor(ctx.pool, worker, res.image, res.url, DOWNLOAD_PATH)
         except Exception as e:
             print(
                 f"ERROR: processing failed for {res.url}: {e}", file=sys.stderr)
@@ -89,7 +91,8 @@ async def download_many(urls: list[str]):
     semaphore = asyncio.Semaphore(MAX_CONCURRENT)
     with concurrent.futures.ProcessPoolExecutor() as pool:
         async with httpx.AsyncClient() as client:
-            await asyncio.gather(*(process(client, semaphore, loop, pool, u) for u in urls))
+            ctx = Context(client, semaphore, loop, pool)
+            await asyncio.gather(*(process(u, ctx) for u in urls))
 
 
 async def main():
